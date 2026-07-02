@@ -1,23 +1,23 @@
-langchain
-langchain-community
-langchain-text-splitters
-langchain-groq
-langchain-huggingface
-langsmith
+langchain==0.3.27
+langchain-community==0.3.27
+langchain-core==0.3.76
+langchain-text-splitters==0.3.11
+langchain-groq==0.3.8
+langchain-huggingface==0.3.1
 
-faiss-cpu
-rank-bm25
+faiss-cpu==1.12.0
+rank-bm25==0.2.2
 
-sentence-transformers
-transformers
-torch
+sentence-transformers==5.1.1
+transformers==4.56.1
+torch==2.8.0
 
-pypdf
-pytesseract
-pdf2image
-Pillow
+pypdf==6.0.0
+pytesseract==0.3.13
+pdf2image==1.17.0
+Pillow==11.3.0
 
-python-dotenv
-rich
-typer
-tenacity
+python-dotenv==1.1.1
+rich==14.1.0
+typer==0.17.4
+tenacity==9.1.2

@@ -1,5 +1,7 @@
 """HuggingFace embedding and FAISS index utilities."""
 
+import hashlib
+import json
 from pathlib import Path
 
 from langchain_core.documents import Document
@@ -7,6 +9,41 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+_FAISS_MANIFEST_NAME = "index.meta.json"
+
+
+def build_source_fingerprint(source_dir: Path) -> str:
+    """Build a stable fingerprint for all PDFs under a source directory."""
+    digest = hashlib.sha256()
+
+    pdf_paths = sorted(path for path in source_dir.rglob("*.pdf") if path.is_file())
+
+    for pdf_path in pdf_paths:
+        stat_result = pdf_path.stat()
+        digest.update(str(pdf_path.resolve()).encode("utf-8"))
+        digest.update(str(stat_result.st_size).encode("utf-8"))
+        digest.update(str(stat_result.st_mtime_ns).encode("utf-8"))
+
+    return digest.hexdigest()
+
+
+def _manifest_path(index_dir: Path) -> Path:
+    return index_dir / _FAISS_MANIFEST_NAME
+
+
+def _load_manifest(index_dir: Path) -> dict | None:
+    manifest_file = _manifest_path(index_dir)
+    if not manifest_file.exists():
+        return None
+
+    with manifest_file.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _save_manifest(index_dir: Path, manifest: dict) -> None:
+    index_dir.mkdir(parents=True, exist_ok=True)
+    with _manifest_path(index_dir).open("w", encoding="utf-8") as handle:
+        json.dump(manifest, handle, indent=2, sort_keys=True)
 
 
 def build_hf_embeddings(
@@ -57,6 +94,7 @@ def load_or_build_faiss_index(
     documents: list[Document],
     index_dir: Path,
     embeddings: HuggingFaceEmbeddings | None = None,
+    source_fingerprint: str | None = None,
     force_rebuild: bool = False,
 ) -> tuple[FAISS, bool]:
     """Return a local FAISS index, loading cache when available.
@@ -67,10 +105,29 @@ def load_or_build_faiss_index(
     embedding_model = embeddings or build_hf_embeddings()
 
     if not force_rebuild:
-        cached = load_faiss_index(index_dir=index_dir, embeddings=embedding_model)
-        if cached is not None:
-            return cached, True
+        manifest = _load_manifest(index_dir)
+        cached_fingerprint = manifest.get("source_fingerprint") if manifest else None
+
+        if (
+            cached_fingerprint
+            and source_fingerprint
+            and cached_fingerprint == source_fingerprint
+        ):
+            cached = load_faiss_index(index_dir=index_dir, embeddings=embedding_model)
+            if cached is not None:
+                return cached, True
 
     vectorstore = build_faiss_index(documents=documents, embeddings=embedding_model)
     save_faiss_index(vectorstore=vectorstore, index_dir=index_dir)
+
+    if source_fingerprint:
+        _save_manifest(
+            index_dir,
+            {
+                "source_fingerprint": source_fingerprint,
+                "embedding_model": DEFAULT_EMBEDDING_MODEL,
+                "document_count": len(documents),
+            },
+        )
+
     return vectorstore, False

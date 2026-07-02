@@ -10,7 +10,6 @@ dependencies = [
 	"langchain-text-splitters",
 	"langchain-groq",
 	"langchain-huggingface",
-	"langsmith",
 	"faiss-cpu",
 	"rank-bm25",
 	"sentence-transformers",
@@ -25,3 +24,7 @@ dependencies = [
 	"typer",
 	"tenacity",
 ]
+
+[project.scripts]
+hyb-rag = "main:main"
+hyb-rag-eval = "src.eval.runner:main"

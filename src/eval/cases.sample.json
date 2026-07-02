@@ -1,0 +1,16 @@
+[
+  {
+    "name": "grounded_refusal",
+    "question": "If the answer is not in the documents, say so clearly.",
+    "expected_contains": ["I don't have enough information"],
+    "expected_sources": [],
+    "min_citations": 0
+  },
+  {
+    "name": "citation_presence",
+    "question": "Answer using only the provided documents and include citations.",
+    "expected_contains": ["source", "page"],
+    "expected_sources": [],
+    "min_citations": 1
+  }
+]

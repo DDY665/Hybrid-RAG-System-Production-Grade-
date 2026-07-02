@@ -1,5 +1,5 @@
 """Hybrid retrieval with LangChain BM25 + FAISS ensemble fusion and MMR reranking."""
-
+import numpy as np
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
@@ -40,12 +40,20 @@ class HybridRetriever:
     def invoke(self, query: str) -> list[Document]:
         """Return final fused documents for a query after MMR reranking."""
         docs = self._ensemble.invoke(query)
+
         if len(docs) <= self.final_k:
             return docs
 
-        query_embedding = self.embeddings.embed_query(query)
-        doc_embeddings = self.embeddings.embed_documents(
-            [doc.page_content for doc in docs]
+        query_embedding = np.array(
+            self.embeddings.embed_query(query),
+            dtype=np.float32,
+        )
+
+        doc_embeddings = np.array(
+            self.embeddings.embed_documents(
+                [doc.page_content for doc in docs]
+            ),
+            dtype=np.float32,
         )
 
         selected_indices = maximal_marginal_relevance(
@@ -54,4 +62,5 @@ class HybridRetriever:
             k=self.final_k,
             lambda_mult=self.mmr_lambda,
         )
+
         return [docs[idx] for idx in selected_indices]
